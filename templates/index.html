@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Code Dashboard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0d0f18;
+  color: #e2e8f0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+header {
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #1e2235;
+  position: sticky;
+  top: 0;
+  background: #0d0f18;
+  z-index: 10;
+}
+
+header h1 {
+  font-size: 17px;
+  font-weight: 700;
+  color: #c084fc;
+  letter-spacing: -0.01em;
+}
+
+#status {
+  font-size: 12px;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.content { padding: 20px 24px; max-width: 1440px; }
+
+/* ── Pro plan banner ──────────────────────────────── */
+.plan-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #12172a;
+  border: 1px solid #2d3a5e;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.plan-badge {
+  background: #4338ca;
+  color: #e0e7ff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.plan-text {
+  font-size: 13px;
+  color: #94a3b8;
+  flex: 1;
+}
+
+.plan-text strong { color: #c7d2fe; }
+
+.plan-note {
+  font-size: 11px;
+  color: #475569;
+  background: #0d0f18;
+  border: 1px solid #1e2235;
+  border-radius: 4px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+/* ── Summary cards ─────────────────────────────── */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.card {
+  background: #141724;
+  border: 1px solid #1e2235;
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+
+.card-label {
+  font-size: 11px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+}
+
+.card-sublabel {
+  font-size: 10px;
+  color: #334155;
+  margin-bottom: 6px;
+  font-style: italic;
+}
+
+.card-value {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.purple { color: #c084fc; }
+.blue   { color: #60a5fa; }
+.green  { color: #4ade80; }
+.orange { color: #fb923c; }
+
+/* ── Panels ────────────────────────────────────── */
+.panel {
+  background: #141724;
+  border: 1px solid #1e2235;
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+
+.panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 14px;
+}
+
+.session-info {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.info-block { display: flex; flex-direction: column; gap: 2px; }
+
+.info-label {
+  font-size: 11px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.info-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.info-value.model-name { color: #c084fc; }
+.info-value.cost-val   { color: #fb923c; }
+
+.info-sub {
+  font-size: 11px;
+  color: #475569;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  margin-top: -2px;
+  word-break: break-all;
+}
+
+/* ── Context gauge ──────────────────────────────── */
+.gauge-label-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.gauge-key   { color: #64748b; }
+.gauge-right { color: #e2e8f0; font-weight: 600; }
+
+.gauge-track {
+  height: 10px;
+  background: #1e2235;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.gauge-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.5s ease;
+}
+
+.fill-normal  { background: linear-gradient(90deg, #6d28d9, #c084fc); }
+.fill-warn    { background: linear-gradient(90deg, #c2410c, #fb923c); }
+.fill-danger  { background: linear-gradient(90deg, #b91c1c, #f87171); }
+
+.gauge-sub {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  font-size: 11px;
+  color: #475569;
+}
+
+/* ── Sessions table ─────────────────────────────── */
+.table-wrap {
+  background: #141724;
+  border: 1px solid #1e2235;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.table-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #1e2235;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  font-size: 11px;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 9px 12px;
+  text-align: left;
+  background: #111320;
+  white-space: nowrap;
+  border-bottom: 1px solid #1e2235;
+}
+
+th:not(:first-child) { text-align: right; }
+
+tr { border-bottom: 1px solid #161929; }
+tr:last-child { border-bottom: none; }
+tr:hover td { background: #161929; }
+
+td {
+  padding: 8px 12px;
+  color: #cbd5e1;
+  font-size: 13px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+td:not(:first-child) { text-align: right; }
+
+.td-project {
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 12px;
+  color: #94a3b8;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.td-model { color: #c084fc; font-size: 12px; }
+.td-cost  { color: #fb923c; font-weight: 600; font-size: 12px; }
+.td-age   { color: #64748b; font-size: 12px; }
+
+.mini-ctx {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  justify-content: flex-end;
+}
+
+.mini-track {
+  width: 48px; height: 4px;
+  background: #1e2235;
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.mini-fill { height: 100%; border-radius: 2px; }
+
+.empty {
+  text-align: center !important;
+  padding: 40px !important;
+  color: #475569;
+  font-style: italic;
+}
+
+/* ── Pricing & Fine Print ───────────────────────── */
+.fine-print {
+  background: #141724;
+  border: 1px solid #1e2235;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.fine-print-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #1e2235;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.fine-print-header:hover { background: #161929; }
+
+.fine-print-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.fine-print-toggle {
+  font-size: 11px;
+  color: #475569;
+}
+
+.fine-print-body {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.fp-section h3 {
+  font-size: 12px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #1e2235;
+}
+
+.fp-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 5px 0;
+  border-bottom: 1px solid #0f1320;
+  gap: 12px;
+}
+
+.fp-row:last-child { border-bottom: none; }
+
+.fp-key {
+  font-size: 12px;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.fp-val {
+  font-size: 12px;
+  color: #e2e8f0;
+  font-weight: 500;
+  text-align: right;
+}
+
+.fp-val.green  { color: #4ade80; }
+.fp-val.purple { color: #c084fc; }
+.fp-val.orange { color: #fb923c; }
+.fp-val.yellow { color: #fbbf24; }
+.fp-val.red    { color: #f87171; }
+
+.fp-list {
+  list-style: none;
+  padding: 0;
+}
+
+.fp-list li {
+  font-size: 12px;
+  color: #64748b;
+  padding: 4px 0;
+  border-bottom: 1px solid #0f1320;
+  padding-left: 14px;
+  position: relative;
+}
+
+.fp-list li:last-child { border-bottom: none; }
+
+.fp-list li::before {
+  content: '·';
+  position: absolute;
+  left: 3px;
+  color: #334155;
+}
+
+.fp-list li strong { color: #94a3b8; }
+.fp-list li .warn  { color: #fb923c; }
+.fp-list li .ok    { color: #4ade80; }
+
+.api-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.api-table th {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #1e2235;
+  padding: 4px 6px;
+  color: #475569;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+}
+
+.api-table td {
+  padding: 5px 6px;
+  border-bottom: 1px solid #0f1320;
+  color: #94a3b8;
+  white-space: nowrap;
+  text-align: right;
+  font-size: 11px;
+}
+
+.api-table td:first-child { text-align: left; color: #c084fc; }
+.api-table tr:last-child td { border-bottom: none; }
+
+.footnote {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: #334155;
+  border-top: 1px solid #1e2235;
+  padding-top: 12px;
+  line-height: 1.7;
+}
+
+.footnote a { color: #475569; }
+
+@media (max-width: 900px) {
+  .cards { grid-template-columns: repeat(2, 1fr); }
+  .session-info { gap: 20px; }
+  .fine-print-body { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Claude Code Dashboard</h1>
+  <div id="status"><div class="dot"></div><span id="status-text">Connecting…</span></div>
+</header>
+
+<div class="content">
+
+  <!-- Plan banner -->
+  <div class="plan-banner">
+    <div class="plan-badge">PRO PLAN</div>
+    <div class="plan-text">
+      <strong>$20/month</strong> flat fee — token costs shown below are
+      <strong>API-equivalent estimates only</strong>, not charges you pay.
+      Claude Code usage is included in your subscription with no per-token billing.
+    </div>
+    <div class="plan-note">No compute fees on Pro</div>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">API-Equiv. Cost</div>
+      <div class="card-sublabel">estimate — not billed</div>
+      <div class="card-value purple" id="c-cost">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Total Sessions</div>
+      <div class="card-sublabel">&nbsp;</div>
+      <div class="card-value blue" id="c-sessions">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Output Tokens</div>
+      <div class="card-sublabel">all sessions</div>
+      <div class="card-value green" id="c-output">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Cache Hit Rate</div>
+      <div class="card-sublabel">reduces API cost estimate</div>
+      <div class="card-value orange" id="c-cache">—</div>
+    </div>
+  </div>
+
+  <!-- Current session -->
+  <div class="panel">
+    <div class="panel-title">Current / Latest Session</div>
+    <div id="current-body">Loading…</div>
+  </div>
+
+  <!-- Sessions table -->
+  <div class="table-wrap">
+    <div class="table-header">Session History</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Project</th>
+          <th>Model</th>
+          <th>Last Active</th>
+          <th>Msgs</th>
+          <th>Input</th>
+          <th>Output</th>
+          <th>Cache%</th>
+          <th>Context</th>
+          <th>API-Equiv.</th>
+        </tr>
+      </thead>
+      <tbody id="sessions-body">
+        <tr><td colspan="9" class="empty">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Fine print -->
+  <div class="fine-print">
+    <div class="fine-print-header" onclick="toggleFp()">
+      <div class="fine-print-title">Pricing Details &amp; Fine Print</div>
+      <div class="fine-print-toggle" id="fp-toggle">▼ show</div>
+    </div>
+    <div class="fine-print-body" id="fp-body" style="display:none">
+
+      <!-- Your plan -->
+      <div class="fp-section">
+        <h3>Your Plan — Claude Pro</h3>
+        <div class="fp-row">
+          <span class="fp-key">Monthly cost</span>
+          <span class="fp-val green">$20.00 / month</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-key">Annual cost (if billed yearly)</span>
+          <span class="fp-val green">$200 / year ($16.67/mo)</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-key">Per-token charges</span>
+          <span class="fp-val green">None — flat fee</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-key">Compute fees</span>
+          <span class="fp-val green">None</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-key">Claude Code included</span>
+          <span class="fp-val green">Yes</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-key">API access (Console / API key)</span>
+          <span class="fp-val red">Not included</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-key">Usage limit reset</span>
+          <span class="fp-val">Every 5 hours (session)</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-key">Usage credits (extend limits)</span>
+          <span class="fp-val orange">Available — extra cost</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-key">Tax</span>
+          <span class="fp-val">Not included in listed price</span>
+        </div>
+      </div>
+
+      <!-- Limits & caveats -->
+      <div class="fp-section">
+        <h3>Usage Limits &amp; Caveats</h3>
+        <ul class="fp-list">
+          <li><strong>Session limits</strong> vary by message length, file attachments, conversation history, and model used.</li>
+          <li><strong>5-hour reset</strong> — your session usage allowance resets every 5 hours regardless of when your billing period started.</li>
+          <li>A <strong>weekly usage cap</strong> also applies across all models. Reset schedule is fixed, not tied to your subscription start date.</li>
+          <li>Anthropic may <span class="warn">further limit usage</span> (monthly caps, model restrictions) at their discretion.</li>
+          <li><strong>Usage credits</strong> let you pay to continue past included limits. Credits are not part of the flat $20 fee — they are <span class="warn">billed separately</span>.</li>
+          <li>Pro is for <strong>individual use</strong> — not organizations. Teams plans start at $25/seat/month.</li>
+          <li><span class="ok">Priority access</span> during peak traffic is included.</li>
+          <li><span class="ok">Early access</span> to new features and models is included.</li>
+          <li>Prices and plans are <span class="warn">subject to change</span> at Anthropic's discretion.</li>
+          <li>Only available in <strong>supported regions</strong>.</li>
+        </ul>
+      </div>
+
+      <!-- API pricing reference -->
+      <div class="fp-section">
+        <h3>API Pricing Reference (if you ever use a key)</h3>
+        <table class="api-table">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Input</th>
+              <th>Output</th>
+              <th>Cache Write</th>
+              <th>Cache Read</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Fable 5</td>
+              <td>$10/M</td><td>$50/M</td><td>$12.50/M</td><td>$1.00/M</td>
+            </tr>
+            <tr>
+              <td>Opus 4.8</td>
+              <td>$5/M</td><td>$25/M</td><td>$6.25/M</td><td>$0.50/M</td>
+            </tr>
+            <tr>
+              <td>Sonnet 4.6</td>
+              <td>$3/M</td><td>$15/M</td><td>$3.75/M</td><td>$0.30/M</td>
+            </tr>
+            <tr>
+              <td>Haiku 4.5</td>
+              <td>$1/M</td><td>$5/M</td><td>$1.25/M</td><td>$0.10/M</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:8px;font-size:11px;color:#334155">
+          Cache write = 1.25× base (5-min TTL) or 2× base (1-hr TTL). Cache read = 0.1× base.
+          Batch API = 50% discount. Fast mode = 6× premium (Opus 4.6/4.7) or 2× (Opus 4.8).
+          Web search = $10 per 1,000 searches.
+        </div>
+      </div>
+
+      <!-- Upgrade options -->
+      <div class="fp-section">
+        <h3>If You Need More</h3>
+        <div class="fp-row">
+          <span class="fp-key">Max plan (5× Pro usage)</span>
+          <span class="fp-val orange">$100/month</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-key">Max plan (20× Pro usage)</span>
+          <span class="fp-val orange">$200/month</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-key">Teams — Standard (5+ people)</span>
+          <span class="fp-val">$25/seat/mo (monthly)</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-key">Teams — Standard (annual)</span>
+          <span class="fp-val">$20/seat/mo</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-key">Teams — Premium (5× Standard)</span>
+          <span class="fp-val orange">$125/seat/mo (monthly)</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-key">Enterprise (self-serve)</span>
+          <span class="fp-val">$20/seat + API rates</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-key">Context window (all current models)</span>
+          <span class="fp-val purple">1M tokens (200K Haiku 4.5)</span>
+        </div>
+      </div>
+
+      <!-- Footnote -->
+      <div class="footnote">
+        Token costs shown in this dashboard are <strong>API-equivalent estimates</strong> calculated using
+        Anthropic's published API rates. They do <strong>not</strong> represent charges on your Pro subscription.
+        The estimates are useful for understanding relative session heaviness and how much each session would
+        cost if billed via the API. · Prices last verified June 2026 from
+        <a href="https://claude.com/pricing" target="_blank">claude.com/pricing</a> and
+        <a href="https://platform.claude.com/docs/en/docs/about-claude/pricing" target="_blank">platform.claude.com</a>.
+        · All prices USD, excluding taxes. Subject to change.
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<script>
+// ── Formatters ─────────────────────────────────────────────────────────────
+
+function fmtTok(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return String(n);
+}
+
+function fmtCost(c) {
+  if (c === 0) return '$0.00';
+  if (c < 0.001) return '<$0.001';
+  if (c < 0.01)  return '$' + c.toFixed(4);
+  if (c < 1)     return '$' + c.toFixed(3);
+  return '$' + c.toFixed(2);
+}
+
+function fmtModel(m) {
+  return m
+    .replace('claude-', '')
+    .replace(/-\d{8}$/, '');
+}
+
+function fmtAge(iso) {
+  if (!iso) return '—';
+  const s = (Date.now() - new Date(iso)) / 1000;
+  if (s < 90)    return 'just now';
+  if (s < 3600)  return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return Math.floor(s / 86400) + 'd ago';
+}
+
+function fmtPath(cwd, project) {
+  if (!cwd) return project;
+  const parts = cwd.replace(/\\/g, '/').split('/').filter(Boolean);
+  if (parts.length <= 2) return cwd;
+  return parts.slice(-2).join('/');
+}
+
+function gaugeClass(pct) {
+  if (pct >= 90) return 'fill-danger';
+  if (pct >= 70) return 'fill-warn';
+  return 'fill-normal';
+}
+
+function miniColor(pct) {
+  if (pct >= 90) return '#f87171';
+  if (pct >= 70) return '#fb923c';
+  return '#a78bfa';
+}
+
+// ── Fine print toggle ───────────────────────────────────────────────────────
+
+function toggleFp() {
+  const body = document.getElementById('fp-body');
+  const tog  = document.getElementById('fp-toggle');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'grid';
+  tog.textContent = open ? '▼ show' : '▲ hide';
+}
+
+// ── Render current session ──────────────────────────────────────────────────
+
+function renderCurrent(s) {
+  const el = document.getElementById('current-body');
+
+  if (!s) {
+    el.innerHTML = '<div style="color:#475569;font-style:italic">No sessions found. Run Claude Code to populate data.</div>';
+    return;
+  }
+
+  const ctx_pct  = s.context_pct;
+  const ctx_used = s.last_context_size;
+  const ctx_left = Math.max(0, s.context_window - ctx_used);
+  const ctx_win  = s.context_window;
+
+  el.innerHTML = `
+    <div class="session-info">
+      <div class="info-block">
+        <div class="info-label">Model</div>
+        <div class="info-value model-name">${fmtModel(s.model)}</div>
+        <div class="info-sub">${fmtPath(s.cwd, s.project)}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">API-Equiv. Cost</div>
+        <div class="info-value cost-val">${fmtCost(s.cost)}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">Messages</div>
+        <div class="info-value">${s.messages}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">Input Tokens</div>
+        <div class="info-value">${fmtTok(s.input_tokens)}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">Output Tokens</div>
+        <div class="info-value">${fmtTok(s.output_tokens)}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">Cache Read</div>
+        <div class="info-value">${fmtTok(s.cache_read_tokens)}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">Cache Hit %</div>
+        <div class="info-value">${s.cache_hit_rate}%</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">Last Active</div>
+        <div class="info-value">${fmtAge(s.end)}</div>
+      </div>
+    </div>
+    <div class="gauge-label-row">
+      <span class="gauge-key">Context window (${(ctx_win/1000).toFixed(0)}K tokens)</span>
+      <span class="gauge-right">${ctx_pct}% used &nbsp;·&nbsp; ${fmtTok(ctx_used)} used &nbsp;·&nbsp; ${fmtTok(ctx_left)} remaining</span>
+    </div>
+    <div class="gauge-track">
+      <div class="gauge-fill ${gaugeClass(ctx_pct)}" style="width:${ctx_pct}%"></div>
+    </div>
+    <div class="gauge-sub">
+      <span>0</span>
+      <span>${(ctx_win/1000).toFixed(0)}K</span>
+    </div>
+  `;
+}
+
+// ── Render sessions table ───────────────────────────────────────────────────
+
+function renderTable(sessions) {
+  const tbody = document.getElementById('sessions-body');
+
+  if (!sessions || sessions.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty">No sessions found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = sessions.map(s => {
+    const fill  = Math.min(s.context_pct, 100);
+    const color = miniColor(s.context_pct);
+    return `<tr>
+      <td class="td-project" title="${s.cwd || s.project}">${fmtPath(s.cwd, s.project)}</td>
+      <td class="td-model">${fmtModel(s.model)}</td>
+      <td class="td-age">${fmtAge(s.end)}</td>
+      <td>${s.messages}</td>
+      <td>${fmtTok(s.input_tokens)}</td>
+      <td>${fmtTok(s.output_tokens)}</td>
+      <td>${s.cache_hit_rate}%</td>
+      <td>
+        <div class="mini-ctx">
+          <div class="mini-track">
+            <div class="mini-fill" style="width:${fill}%;background:${color}"></div>
+          </div>
+          <span>${s.context_pct}%</span>
+        </div>
+      </td>
+      <td class="td-cost">${fmtCost(s.cost)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Fetch & update ──────────────────────────────────────────────────────────
+
+let fetching = false;
+
+function update() {
+  if (fetching) return;
+  fetching = true;
+
+  fetch('/api/stats')
+    .then(r => r.json())
+    .then(data => {
+      const t = data.totals;
+      document.getElementById('c-cost').textContent     = fmtCost(t.cost);
+      document.getElementById('c-sessions').textContent = t.sessions.toLocaleString();
+      document.getElementById('c-output').textContent   = fmtTok(t.output_tokens);
+      document.getElementById('c-cache').textContent    = t.cache_hit_rate + '%';
+      document.getElementById('status-text').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+      renderCurrent(data.sessions[0] || null);
+      renderTable(data.sessions);
+    })
+    .catch(() => {
+      window.close();
+      window.location.replace('about:blank');
+    })
+    .finally(() => { fetching = false; });
+}
+
+update();
+setInterval(update, 5000);
+</script>
+</body>
+</html>
