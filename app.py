@@ -1,5 +1,6 @@
 import json
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template
@@ -35,6 +36,25 @@ _CONTEXT = {
 
 _DEFAULT_PRICING = (3.00, 15.00, 3.75, 0.30)
 _DEFAULT_CONTEXT = 200_000
+
+
+def _duration_seconds(start, end):
+    if not start or not end:
+        return 0
+    try:
+        s = datetime.fromisoformat(start.replace("Z", "+00:00"))
+        e = datetime.fromisoformat(end.replace("Z", "+00:00"))
+        return max(0, (e - s).total_seconds())
+    except Exception:
+        return 0
+
+
+def _project_name(cwd, fallback):
+    path = cwd or fallback
+    for sep in ("/", "\\"):
+        if sep in path:
+            return path.rstrip(sep).rsplit(sep, 1)[-1]
+    return path
 
 
 def _lookup(table, model, default):
@@ -184,8 +204,37 @@ def get_stats():
     all_cr     = sum(s["cache_read_tokens"] for s in result)
     overall_cr = (all_cr / all_input * 100) if all_input > 0 else 0
 
+    projects = {}
+    for s in result:
+        key = s["cwd"] or s["project"]
+        if key not in projects:
+            projects[key] = {
+                "name":        _project_name(s["cwd"], s["project"]),
+                "path":        key,
+                "sessions":    0,
+                "cost":        0.0,
+                "duration":    0.0,
+                "last_active": "",
+            }
+        p = projects[key]
+        p["sessions"] += 1
+        p["cost"]     += s["cost"]
+        p["duration"] += _duration_seconds(s["start"], s["end"])
+        if not p["last_active"] or (s["end"] and s["end"] > p["last_active"]):
+            p["last_active"] = s["end"]
+
+    projects_list = sorted(
+        [{"name": p["name"], "path": p["path"], "sessions": p["sessions"],
+          "cost": round(p["cost"], 4), "duration": round(p["duration"]),
+          "last_active": p["last_active"]}
+         for p in projects.values()],
+        key=lambda p: p["last_active"] or "",
+        reverse=True,
+    )
+
     return {
         "sessions": result[:200],
+        "projects": projects_list,
         "totals": {
             "cost":          round(total_cost, 4),
             "sessions":      len(result),

@@ -515,6 +515,25 @@ td:not(:first-child) { text-align: right; }
     </div>
   </div>
 
+  <!-- Projects breakdown -->
+  <div class="table-wrap">
+    <div class="table-header">Projects — Time &amp; Cost</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Project</th>
+          <th>Sessions</th>
+          <th>Time</th>
+          <th>API-Equiv. Cost</th>
+          <th>Last Active</th>
+        </tr>
+      </thead>
+      <tbody id="projects-body">
+        <tr><td colspan="5" class="empty">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
   <!-- Current session -->
   <div class="panel">
     <div class="panel-title">Current / Latest Session</div>
@@ -737,6 +756,16 @@ function fmtPath(cwd, project) {
   return parts.slice(-2).join('/');
 }
 
+function fmtDuration(seconds) {
+  if (!seconds || seconds < 60) return '<1m';
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return d + 'd ' + h + 'h';
+  if (h > 0) return h + 'h ' + m + 'm';
+  return m + 'm';
+}
+
 function gaugeClass(pct) {
   if (pct >= 90) return 'fill-danger';
   if (pct >= 70) return 'fill-warn';
@@ -757,6 +786,23 @@ function toggleFp() {
   const open = body.style.display !== 'none';
   body.style.display = open ? 'none' : 'grid';
   tog.textContent = open ? '▼ show' : '▲ hide';
+}
+
+// ── Render projects table ───────────────────────────────────────────────────
+
+function renderProjects(projects) {
+  const tbody = document.getElementById('projects-body');
+  if (!projects || projects.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">No projects found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = projects.map(p => `<tr>
+    <td class="td-project" title="${p.path}">${p.name}</td>
+    <td style="text-align:right">${p.sessions}</td>
+    <td style="text-align:right;color:#60a5fa;font-weight:600">${fmtDuration(p.duration)}</td>
+    <td class="td-cost">${fmtCost(p.cost)}</td>
+    <td class="td-age">${fmtAge(p.last_active)}</td>
+  </tr>`).join('');
 }
 
 // ── Render current session ──────────────────────────────────────────────────
@@ -876,6 +922,7 @@ function update() {
       document.getElementById('c-cache').textContent    = t.cache_hit_rate + '%';
       document.getElementById('status-text').textContent = 'Updated ' + new Date().toLocaleTimeString();
 
+      renderProjects(data.projects || []);
       renderCurrent(data.sessions[0] || null);
       renderTable(data.sessions);
     })
