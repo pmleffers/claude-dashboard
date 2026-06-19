@@ -7,7 +7,15 @@ from flask import Flask, jsonify, render_template
 
 app = Flask(__name__)
 
-PROJECTS_DIR = Path.home() / ".claude" / "projects"
+PROJECTS_DIR   = Path.home() / ".claude" / "projects"
+_NAMES_FILE    = Path(__file__).parent / "project_names.json"
+
+
+def _load_project_names():
+    try:
+        return json.loads(_NAMES_FILE.read_text())
+    except Exception:
+        return {}
 
 # (input $/M, output $/M, cache_write $/M, cache_read $/M)
 _PRICING = {
@@ -49,7 +57,9 @@ def _duration_seconds(start, end):
         return 0
 
 
-def _project_name(cwd, fallback):
+def _project_name(cwd, fallback, names=None):
+    if names and cwd and cwd in names:
+        return names[cwd]
     path = cwd or fallback
     for sep in ("/", "\\"):
         if sep in path:
@@ -78,7 +88,8 @@ def _cost(model, in_tok, out_tok, cw_tok, cr_tok):
 
 
 def get_stats():
-    sessions = {}
+    sessions     = {}
+    project_names = _load_project_names()
 
     if not PROJECTS_DIR.exists():
         return {
@@ -209,7 +220,7 @@ def get_stats():
         key = s["cwd"] or s["project"]
         if key not in projects:
             projects[key] = {
-                "name":        _project_name(s["cwd"], s["project"]),
+                "name":        _project_name(s["cwd"], s["project"], project_names),
                 "path":        key,
                 "sessions":    0,
                 "cost":        0.0,
