@@ -215,19 +215,31 @@ def get_stats():
     all_cr     = sum(s["cache_read_tokens"] for s in result)
     overall_cr = (all_cr / all_input * 100) if all_input > 0 else 0
 
+    # Pre-seed all named projects so they appear even with zero sessions.
+    # Key by friendly name so multiple paths mapping to the same name merge.
     projects = {}
-    for s in result:
-        key = s["cwd"] or s["project"]
-        if key not in projects:
-            projects[key] = {
-                "name":        _project_name(s["cwd"], s["project"], project_names),
-                "path":        key,
+    for path, name in project_names.items():
+        if name not in projects:
+            projects[name] = {
+                "name":        name,
                 "sessions":    0,
                 "cost":        0.0,
                 "duration":    0.0,
                 "last_active": "",
             }
-        p = projects[key]
+
+    for s in result:
+        key  = s["cwd"] or s["project"]
+        name = project_names.get(key) or _project_name(key, s["project"])
+        if name not in projects:
+            projects[name] = {
+                "name":        name,
+                "sessions":    0,
+                "cost":        0.0,
+                "duration":    0.0,
+                "last_active": "",
+            }
+        p = projects[name]
         p["sessions"] += 1
         p["cost"]     += s["cost"]
         p["duration"] += _duration_seconds(s["start"], s["end"])
@@ -235,7 +247,7 @@ def get_stats():
             p["last_active"] = s["end"]
 
     projects_list = sorted(
-        [{"name": p["name"], "path": p["path"], "sessions": p["sessions"],
+        [{"name": p["name"], "sessions": p["sessions"],
           "cost": round(p["cost"], 4), "duration": round(p["duration"]),
           "last_active": p["last_active"]}
          for p in projects.values()],

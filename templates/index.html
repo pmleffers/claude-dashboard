@@ -797,7 +797,7 @@ function renderProjects(projects) {
     return;
   }
   tbody.innerHTML = projects.map(p => `<tr>
-    <td class="td-project" title="${p.path}">${p.name}</td>
+    <td class="td-project">${p.name}</td>
     <td style="text-align:right">${p.sessions}</td>
     <td style="text-align:right;color:#60a5fa;font-weight:600">${fmtDuration(p.duration)}</td>
     <td class="td-cost">${fmtCost(p.cost)}</td>
